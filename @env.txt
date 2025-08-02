@@ -1,0 +1,8 @@
+# Google Gemini API Key - 이 내용을 .env.local 파일에 복사해주세요
+GOOGLE_API_KEY=AIzaSyBEqshv6mM5BqHVC-YXPrndTCjc5AajZ3k
+
+# Next.js 설정
+NEXT_PUBLIC_APP_NAME=Taro AI
+NEXT_PUBLIC_APP_DESCRIPTION=AI Tarot Card Reading & Fragrance Recommendation Service
+
+# 주의: 이 파일의 내용을 반드시 .env.local 파일에 그대로 복사하세요!
