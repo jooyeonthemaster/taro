@@ -18,6 +18,7 @@ function TarotResultContent() {
   const [spreadType, setSpreadType] = useState('daily');
   const [recommendedFragrance, setRecommendedFragrance] = useState<FragranceRecommendation | null>(null);
   const [detailedReading, setDetailedReading] = useState<TarotReading | null>(null);
+  const [fragranceStory, setFragranceStory] = useState<any>(null);
 
   const spreads = {
     daily: { name: '일일 운세', positions: ['현재 상황', '해야 할 일', '피해야 할 일'] },
@@ -237,7 +238,42 @@ function TarotResultContent() {
 
           setRecommendedFragrance(bestMatch);
 
-          // 4. AI 향수 추천
+          // 4. 새로운 스토리텔링 기반 향수 추천
+          try {
+            // AI 해석 결과와 함께 향수 스토리 생성
+            const storyResponse = await fetch('/api/fragrance-story', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                tarotAnalysis: detailedReading || localReading,
+                selectedCards: cards,
+                userQuestion: question,
+                fragranceData: bestMatch
+              }),
+            });
+            
+            if (storyResponse.ok) {
+              const storyData = await storyResponse.json();
+              console.log('향수 스토리:', storyData.result);
+              
+              try {
+                const cleanedStory = storyData.result
+                  .replace(/```json\s*/g, '')
+                  .replace(/```\s*/g, '')
+                  .trim();
+                const parsedStory = JSON.parse(cleanedStory);
+                setFragranceStory(parsedStory);
+              } catch (parseError) {
+                console.error('향수 스토리 파싱 오류:', parseError);
+              }
+            }
+          } catch (error) {
+            console.error('향수 스토리 생성 실패:', error);
+          }
+
+          // 5. 기존 AI 향수 추천 (백업용)
           const fragrancePrompt = `
 타로 결과를 바탕으로 향수를 추천해주세요:
 
@@ -388,7 +424,24 @@ ${FRAGRANCE_DATABASE.map(f => `${f.code}: ${f.name} - ${f.description}`).join('\
       </motion.header>
 
       <div className="max-w-sm mx-auto space-y-4">
-        {/* 질문 섹션 */}
+        {/* 향수 번호 하이라이트 - 최상단 */}
+        {recommendedFragrance && (
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+          >
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-black text-4xl md:text-5xl px-6 py-3 rounded-xl mb-2 shadow-2xl border-4 border-white/50 animate-pulse">
+              {recommendedFragrance.code}
+            </div>
+            <p className="text-sm text-yellow-300 font-bold text-shadow-strong">
+              ✨ 운명의 향수가 결정되었어요! ✨
+            </p>
+          </motion.div>
+        )}
+
+        {/* AI 요약 섹션 */}
         <motion.div
           className="text-container p-4"
           initial={{ opacity: 0, y: 30 }}
@@ -399,7 +452,7 @@ ${FRAGRANCE_DATABASE.map(f => `${f.code}: ${f.name} - ${f.description}`).join('\
             {spreads[spreadType as keyof typeof spreads]?.name} 결과
           </h2>
           <p className="text-xs text-gray-200 text-shadow-strong text-center bg-purple-900/30 p-2 rounded">
-            💫 "{userQuestion}"
+            💫 {detailedReading?.overallMessage || userQuestion}
           </p>
         </motion.div>
 
@@ -621,62 +674,136 @@ ${FRAGRANCE_DATABASE.map(f => `${f.code}: ${f.name} - ${f.description}`).join('\
           </motion.div>
         )}
 
-        {/* 향수 추천 */}
+        {/* 운명의 향수 추천 - 완전 새로운 스토리텔링 */}
         {recommendedFragrance && (
           <motion.div
-            className="text-container p-4"
+            className="space-y-4"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1 }}
           >
-            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2 text-shadow-strong">
-              <Heart className="w-4 h-4 text-pink-400" />
-              운명의 향수 추천
-            </h3>
-            <div className="bg-gradient-to-br from-pink-900/30 to-purple-900/30 p-4 rounded-lg border border-pink-500/30">
-              {/* 향수 번호 개크게 상단 노출 */}
-              <div className="text-center mb-4">
-                <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-black text-4xl md:text-5xl px-6 py-3 rounded-xl mb-3 shadow-2xl border-4 border-white/50 animate-pulse">
-                  {recommendedFragrance.code}
-                </div>
+            {/* 향수 헤더 */}
+            <div className="text-container p-4">
+              <h3 className="text-xl font-bold text-white mb-2 text-center text-shadow-strong flex items-center justify-center gap-2">
+                <Heart className="w-5 h-5 text-pink-400" />
+                운명의 향수 이야기
+                <Heart className="w-5 h-5 text-pink-400" />
+              </h3>
+              <div className="text-center">
                 <h4 className="text-lg font-bold text-pink-300 mb-1">{recommendedFragrance.name}</h4>
+                <p className="text-sm text-gray-300">{recommendedFragrance.description}</p>
               </div>
-              
-              <p className="text-xs text-gray-200 leading-relaxed mb-3">
-                {recommendedFragrance.description}
-              </p>
-              
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-pink-300 font-bold">탑 노트:</span>
-                  <span className="text-gray-200 ml-1">{recommendedFragrance.notes.top.join(', ')}</span>
-                </div>
-                <div>
-                  <span className="text-pink-300 font-bold">하트 노트:</span>
-                  <span className="text-gray-200 ml-1">{recommendedFragrance.notes.heart.join(', ')}</span>
-                </div>
-                <div>
-                  <span className="text-pink-300 font-bold">베이스 노트:</span>
-                  <span className="text-gray-200 ml-1">{recommendedFragrance.notes.base.join(', ')}</span>
+            </div>
+
+            {/* 스토리텔링 섹션들 */}
+            {fragranceStory ? (
+              <div className="space-y-3">
+                {/* 치유 스토리 */}
+                <motion.div
+                  className="text-container-card p-4"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1.2 }}
+                >
+                  <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 p-4 rounded-lg border-2 border-emerald-400/50">
+                    <h4 className="text-sm font-bold text-emerald-300 mb-2 text-shadow-strong flex items-center gap-2">
+                      ✨ 운명적 치유의 이야기
+                    </h4>
+                    <p className="text-xs text-gray-200 leading-relaxed">
+                      {fragranceStory.healingStory}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* 원재료 마법 */}
+                <motion.div
+                  className="text-container-card p-4"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1.4 }}
+                >
+                  <div className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 p-4 rounded-lg border-2 border-purple-400/50">
+                    <h4 className="text-sm font-bold text-purple-300 mb-2 text-shadow-strong flex items-center gap-2">
+                      🌿 신비로운 원재료의 마법
+                    </h4>
+                    <p className="text-xs text-gray-200 leading-relaxed mb-3">
+                      {fragranceStory.ingredientMagic}
+                    </p>
+                    
+                    {/* 향 노트 디스플레이 */}
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="bg-yellow-500/20 p-2 rounded border border-yellow-400/30">
+                        <span className="text-yellow-300 font-bold block mb-1">Top</span>
+                        <span className="text-gray-200">{recommendedFragrance.notes.top.join(', ')}</span>
+                      </div>
+                      <div className="bg-pink-500/20 p-2 rounded border border-pink-400/30">
+                        <span className="text-pink-300 font-bold block mb-1">Heart</span>
+                        <span className="text-gray-200">{recommendedFragrance.notes.heart.join(', ')}</span>
+                      </div>
+                      <div className="bg-purple-500/20 p-2 rounded border border-purple-400/30">
+                        <span className="text-purple-300 font-bold block mb-1">Base</span>
+                        <span className="text-gray-200">{recommendedFragrance.notes.base.join(', ')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* 변화의 약속 */}
+                <motion.div
+                  className="text-container-card p-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.6 }}
+                >
+                  <div className="bg-gradient-to-r from-rose-500/20 to-pink-500/20 p-4 rounded-lg border-2 border-rose-400/50">
+                    <h4 className="text-sm font-bold text-rose-300 mb-2 text-shadow-strong flex items-center gap-2">
+                      💫 당신에게 일어날 변화
+                    </h4>
+                    <p className="text-xs text-gray-200 leading-relaxed">
+                      {fragranceStory.transformationPromise}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* 사용 의식 */}
+                <motion.div
+                  className="text-container-card p-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.8 }}
+                >
+                  <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 p-4 rounded-lg border-2 border-amber-400/50">
+                    <h4 className="text-sm font-bold text-amber-300 mb-2 text-shadow-strong flex items-center gap-2">
+                      🔮 마법의 사용법
+                    </h4>
+                    <p className="text-xs text-gray-200 leading-relaxed">
+                      {fragranceStory.ritualAdvice}
+                    </p>
+                  </div>
+                </motion.div>
+              </div>
+            ) : (
+              /* 로딩 중이거나 스토리 없을 때 기본 디스플레이 */
+              <div className="text-container-card p-4">
+                <div className="text-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-8 h-8 mx-auto mb-2"
+                  >
+                    <Sparkles className="w-full h-full text-purple-400" />
+                  </motion.div>
+                  <p className="text-sm text-gray-300">향수 이야기를 만들고 있어요...</p>
                 </div>
               </div>
-              
-              <div className="mt-3 p-3 bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded border border-pink-400/30">
-                <p className="text-xs text-gray-200 leading-relaxed mb-2">
-                  <span className="text-yellow-300 font-bold">🌟 승연이의 미친 추천 이유:</span><br/>
-                  {recommendedFragrance.reasoning}
-                </p>
-                <p className="text-xs text-pink-200 leading-relaxed">
-                  <span className="text-pink-300 font-bold">✨ 카드 연결점:</span><br/>
-                  {selectedCards.map(card => card.nameKr).join(' + ')} 조합이 만들어내는 에너지가 이 향수와 완벽하게 매칭돼요! 
-                  특히 "{selectedCards[0].keywords[0]}" 키워드가 이 향수의 "{recommendedFragrance.personality[0]}" 성격과 소름 돋게 일치해요!
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap gap-1 mt-2">
+            )}
+
+            {/* 향수 성격 태그 */}
+            <div className="text-container-light p-3">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {recommendedFragrance.personality.map((trait, i) => (
-                  <span key={i} className="text-xs bg-pink-600 text-white px-2 py-1 rounded">
-                    {trait}
+                  <span key={i} className="text-xs bg-gradient-to-r from-pink-600 to-purple-600 text-white px-3 py-1 rounded-full font-bold shadow-lg">
+                    #{trait}
                   </span>
                 ))}
               </div>

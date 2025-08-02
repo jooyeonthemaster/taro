@@ -27,24 +27,84 @@ export async function generateTarotReading(prompt: string) {
     ${prompt}
     
     ** 중요! 응답할 때 반드시 지켜야 할 말투 규칙: **
-    1. 완전 디시/커뮤 감성으로 말해! (ㅋㅋㅋ, 개꿀, 찐, 각도, 개부럽, 개소름 등 사용)
-    2. 비속어는 절대 쓰지 말 것
-    3. 반말로 친근하게 
-    4. "너", "네", "당신" 같은 표현 사용
-    5. "이거 완전", "개신기하네", "ㅋㅋㅋ" 같은 표현 자주 사용
-    6. 딱딱한 존댓말 금지! 
+    1. 친근하고 재미있게 말해! (ㅋㅋㅋ, 완전, 진짜, 대박, 좋은데? 등 사용)
+    2. 비속어나 비난하는 말투는 절대 쓰지 말 것
+    3. 반말로 친근하게 but 따뜻하게
+    4. "너", "네" 같은 친근한 표현 사용
+    5. 긍정적이고 응원하는 톤 유지 - 비꼬거나 공격적인 말 금지
+    6. 딱딱한 존댓말 금지하되 따뜻한 조언자 느낌으로
     
     예시 문체:
-    - "이거 완전 너 얘기네? ㅋㅋㅋ"
-    - "카드들이 개꿀 케미 터지고 있는데?"
-    - "진짜 찐이야! 소름 돋네"
-    - "이거 개부럽다 진짜"
+    - "이거 완전 너한테 딱 맞는 메시지네!"
+    - "카드들이 좋은 에너지 보내고 있어 ㅋㅋ"
+    - "진짜 좋은 신호야! 희망적이네"
+    - "이런 타이밍이면 괜찮을 것 같은데?"
+    
+    ** 절대 하지 말아야 할 말투들: **
+    - 비난하는 톤 ("~하지 마", "그만해", "독이다" 등)
+    - 공격적인 지적 ("~하는 거 그만", "~하고 있는 거" 등)
+    - 부정적인 단정 ("망했다", "안 된다" 등)
     `;
     
     const response = await model.generateContent(enhancedPrompt);
     return response.response.text();
   } catch (error) {
     console.error('타로 리딩 생성 중 오류:', error);
+    throw error;
+  }
+}
+
+// 새로운 스토리텔링 기반 향수 추천 함수
+export async function generateFragranceStoryRecommendation(
+  tarotAnalysis: any,
+  selectedCards: any[],
+  userQuestion: string,
+  fragranceData: any
+) {
+  try {
+    const cardNames = selectedCards.map(card => card.nameKr).join(', ');
+    const cardMeanings = selectedCards.map(card => `${card.nameKr}: ${card.description}`).join('\n');
+    
+    const prompt = `
+당신은 향수 전문가이자 스토리텔러입니다. 타로 카드 분석 결과를 바탕으로 완벽한 향수 추천 스토리를 만들어주세요.
+
+**타로 분석 정보:**
+- 질문: "${userQuestion}"
+- 선택된 카드들: ${cardNames}
+- 카드 의미들:
+${cardMeanings}
+- 전체 분석: ${JSON.stringify(tarotAnalysis)}
+
+**추천할 향수:**
+- 코드: ${fragranceData.code}
+- 이름: ${fragranceData.name}
+- 설명: ${fragranceData.description}
+- 탑 노트: ${fragranceData.notes.top.join(', ')}
+- 하트 노트: ${fragranceData.notes.heart.join(', ')}
+- 베이스 노트: ${fragranceData.notes.base.join(', ')}
+- 성격: ${fragranceData.personality.join(', ')}
+
+**응답 형식 (반드시 JSON으로):**
+{
+  "healingStory": "타로에서 나타난 문제나 상황을 이 향수가 어떻게 치유/해결해주는지에 대한 흥미진진한 스토리 (3-4문장)",
+  "ingredientMagic": "각 향 원재료가 타로 메시지와 어떻게 연결되어 마법같은 효과를 주는지 설명 (2-3문장)",
+  "transformationPromise": "이 향수를 사용했을 때 어떤 변화가 일어날지에 대한 희망적인 미래 예측 (2문장)",
+  "ritualAdvice": "이 향수를 언제, 어떻게 사용하면 가장 효과적인지에 대한 구체적인 조언 (1-2문장)"
+}
+
+**중요한 규칙들:**
+1. 반드시 따뜻하고 희망적인 톤으로 작성
+2. 타로 분석 내용을 정확히 반영해서 맞춤형 스토리 생성
+3. 향수 원재료의 실제 특성을 활용한 설득력 있는 설명
+4. 비관적이거나 부정적인 표현 절대 금지
+5. 마법적이고 신비로운 분위기 유지
+6. 구체적이고 실용적인 조언 포함
+`;
+
+    const response = await model.generateContent(prompt);
+    return response.response.text();
+  } catch (error) {
+    console.error('향수 스토리 생성 중 오류:', error);
     throw error;
   }
 }
@@ -97,16 +157,17 @@ export async function generateFragranceRecommendation(
     ** 중요! 반드시 지켜야 할 규칙들: **
     1. 🔥 절대로 AC'SCENT15만 계속 추천하지 말 것! 1번부터 30번까지 골고루 추천해야 함!
     2. 매번 다른 번호의 향수를 추천할 것! (01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30 중에서!)
-    3. 말투는 완전 디시/커뮤 감성으로! (ㅋㅋㅋ, 개꿀, 찐, 각도 등 사용)
-    4. 비속어는 쓰지 말 것
-    5. 반말로 친근하게
+    3. 말투는 친근하고 재미있게! (ㅋㅋㅋ, 완전, 진짜, 대박, 좋은데? 등 사용)
+    4. 비속어나 비난하는 말투는 절대 쓰지 말 것
+    5. 반말로 친근하게 but 따뜻하게
     6. 🔥 다시 한번 강조: 특정 번호만 계속 추천하는 것은 절대 금지!
     
     추천할 때 포함해야 할 내용:
     1. 추천 향수 코드와 이름 (예: AC'SCENT07 로즈 클래식)
-    2. "이거 완전 너랑 찰떡인데?" 같은 커뮤 감성으로 타로 결과와 연관성 설명
-    3. "ㅋㅋㅋ 향수 성격이랑 카드 키워드 개똑같네!" 이런 식으로 매칭 이유
-    4. "향 자체가 타로 메시지 그 잡채임 ㅋㅋ" 같은 식으로 향 노트 연결 설명
+    2. "이거 완전 너한테 딱 맞을 것 같은데?" 같은 친근한 감성으로 타로 결과와 연관성 설명
+    3. "진짜 향수 성격이랑 카드 키워드가 잘 맞네!" 이런 식으로 매칭 이유 설명
+    4. "향이 타로 메시지랑 정말 잘 어울려 ㅋㅋ" 같은 식으로 향 노트 연결 설명
+    5. 긍정적이고 응원하는 톤으로 추천 - 비난하거나 지적하는 말투 금지
     `;
 
     const response = await model.generateContent(prompt);
